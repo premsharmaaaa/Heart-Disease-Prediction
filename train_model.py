@@ -27,9 +27,9 @@ from sklearn.metrics import (
     confusion_matrix
 )
 
-# ======================================
+
 # LOAD DATASET
-# ======================================
+
 
 df = pd.read_csv("dataset/heart.csv", encoding='latin1')
 
@@ -42,13 +42,11 @@ print(df.info())
 print("\nMissing Values:")
 print(df.isnull().sum())
 
-# ======================================
-# FEATURES & TARGET
-# ======================================
 
-# ======================================
+# FEATURES & TARGET
+ 
 # DROP UNNECESSARY TEXT COLUMNS
-# ======================================
+
 
 df = df.drop([
     "full_name",
@@ -62,16 +60,16 @@ df = df.drop([
     "treatment_date"
 ], axis=1)
 
-# ======================================
+
 # FEATURES & TARGET
-# ======================================
+
 
 X = df.drop("heart_disease", axis=1)
 y = df["heart_disease"]
 
-# ======================================
+
 # TRAIN TEST SPLIT
-# ======================================
+
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -80,9 +78,9 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-# ======================================
+
 # FEATURE SCALING
-# ======================================
+
 
 scaler = StandardScaler()
 

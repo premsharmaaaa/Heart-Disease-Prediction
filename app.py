@@ -2,43 +2,149 @@ import streamlit as st
 import numpy as np
 import joblib
 
-# LOAD MODEL & SCALER
-
-model = joblib.load("models/best_model.pkl")
-scaler = joblib.load("models/scaler.pkl")
-
-
-# PAGE TITLE
+# ==============================
+# PAGE CONFIG
+# ==============================
 
 st.set_page_config(
     page_title="Heart Disease Prediction",
     page_icon="❤️",
-    layout="centered"
+    layout="wide"
 )
 
-st.title(" Heart Disease Prediction System")
+# ==============================
+# CUSTOM CSS
+# ==============================
 
-st.write("Enter patient details belostreamlitw to predict heart disease risk.")
+st.markdown("""
+<style>
 
-# USER INPUTS
+.main {
+    background-color: #0E1117;
+    color: white;
+}
 
-age = st.number_input("Age", 1, 120, 30)
+.stButton>button {
+    width: 100%;
+    background: linear-gradient(to right, #ff416c, #ff4b2b);
+    color: white;
+    border-radius: 10px;
+    height: 3em;
+    font-size: 18px;
+    border: none;
+}
 
-blood_pre = st.number_input("Blood Pressure", 50.0, 250.0, 120.0)
+.stButton>button:hover {
+    background: linear-gradient(to right, #ff4b2b, #ff416c);
+    color: white;
+}
 
-cholesterol = st.number_input("Cholesterol", 50.0, 500.0, 200.0)
+.card {
+    padding: 25px;
+    border-radius: 15px;
+    background-color: #161B22;
+    box-shadow: 0px 0px 15px rgba(255,255,255,0.1);
+    margin-bottom: 20px;
+}
 
-bmi = st.number_input("BMI", 10.0, 60.0, 25.0)
+.title {
+    text-align: center;
+    font-size: 45px;
+    font-weight: bold;
+    color: #ff4b2b;
+}
 
-glucose_level = st.number_input("Glucose Level", 20.0, 400.0, 100.0)
+.subtitle {
+    text-align: center;
+    font-size: 18px;
+    color: #cfcfcf;
+}
 
+</style>
+""", unsafe_allow_html=True)
 
-# PREDICTION BUTTON
+# ==============================
+# LOAD MODEL
+# ==============================
 
+model = joblib.load("models/best_model.pkl")
+scaler = joblib.load("models/scaler.pkl")
 
-if st.button("Predict"):
+# ==============================
+# TITLE
+# ==============================
 
-    # Create input array
+st.markdown('<p class="title">❤️ Heart Disease Prediction System</p>', unsafe_allow_html=True)
+
+st.markdown(
+    '<p class="subtitle">AI-powered system to predict heart disease risk</p>',
+    unsafe_allow_html=True
+)
+
+st.write("")
+
+# ==============================
+# SIDEBAR
+# ==============================
+
+st.sidebar.header("ℹ️ About")
+
+st.sidebar.info(
+    """
+    This application predicts heart disease risk using Machine Learning.
+
+    Enter patient details and click Predict.
+    """
+)
+
+st.sidebar.success("Developed by Prem ❤️")
+
+# ==============================
+# INPUT SECTION
+# ==============================
+
+col1, col2 = st.columns(2)
+
+with col1:
+    age = st.slider("Age", 1, 120, 30)
+
+    blood_pre = st.slider(
+        "Blood Pressure",
+        50,
+        250,
+        120
+    )
+
+    cholesterol = st.slider(
+        "Cholesterol",
+        50,
+        500,
+        200
+    )
+
+with col2:
+    bmi = st.slider(
+        "BMI",
+        10,
+        60,
+        25
+    )
+
+    glucose_level = st.slider(
+        "Glucose Level",
+        20,
+        400,
+        100
+    )
+
+st.write("")
+
+# ==============================
+# PREDICT BUTTON
+# ==============================
+
+if st.button("🔍 Predict Heart Disease Risk"):
+
     input_data = np.array([[
         age,
         blood_pre,
@@ -47,7 +153,7 @@ if st.button("Predict"):
         glucose_level
     ]])
 
-    # Scale input
+    # Scale data
     input_scaled = scaler.transform(input_data)
 
     # Prediction
@@ -56,17 +162,70 @@ if st.button("Predict"):
     # Probability
     probability = model.predict_proba(input_scaled)
 
-    # ==============================
-    # OUTPUT
-    # ==============================
+    risk_score = probability[0][1]
 
-    st.subheader("Prediction Result")
+    st.write("")
+
+    # ==========================
+    # RESULT CARD
+    # ==========================
+
+    st.markdown(
+        '<div class="card">',
+        unsafe_allow_html=True
+    )
+
+    st.subheader("🩺 Prediction Result")
 
     if prediction[0] == 1:
         st.error("⚠️ High Risk of Heart Disease")
     else:
         st.success("✅ Low Risk of Heart Disease")
 
-    st.write(f"Prediction Probability: {probability[0][1]:.2f}")
+    st.write("")
 
-    
+    # Probability bar
+    st.progress(float(risk_score))
+
+    st.write(
+        f"### Prediction Probability: {risk_score * 100:.2f}%"
+    )
+
+    # Health suggestions
+    st.write("")
+
+    st.subheader("💡 Health Suggestions")
+
+    if prediction[0] == 1:
+        st.warning("""
+        - Consult a cardiologist
+        - Reduce cholesterol intake
+        - Exercise regularly
+        - Monitor blood pressure
+        - Maintain healthy BMI
+        """)
+    else:
+        st.success("""
+        - Maintain healthy lifestyle
+        - Continue regular exercise
+        - Eat balanced diet
+        - Regular health checkups
+        """)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ==============================
+# FOOTER
+# ==============================
+
+st.write("")
+st.write("---")
+
+st.markdown(
+    """
+    <center>
+    Made with ❤️ using Streamlit & Machine Learning
+    </center>
+    """,
+    unsafe_allow_html=True
+)
