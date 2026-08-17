@@ -4,1146 +4,1112 @@ import pandas as pd
 import joblib
 import random
 import time
-import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
+import plotly.graph_objects as go
+from google import genai
 
 # =========================================================
 # PAGE CONFIG
 # =========================================================
-
 st.set_page_config(
-    page_title="HeartAI — Cardiac Intelligence Platform",
-    page_icon="❤️",
+    page_title="HeartAI | Cardiac Risk Assistant",
+    page_icon="🫀",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # =========================================================
-# CUSTOM CSS — Premium Dark Medical Theme
+# PROFESSIONAL UI — REDESIGNED COLOR SYSTEM
 # =========================================================
-
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@700;800&display=swap');
 
-:root {
-    --bg-primary: #080C14;
-    --bg-secondary: #0D1421;
-    --bg-card: #111827;
-    --bg-card-hover: #151f2e;
-    --accent-red: #EF4444;
-    --accent-red-glow: rgba(239,68,68,0.15);
-    --accent-orange: #F97316;
-    --accent-green: #10B981;
-    --accent-blue: #3B82F6;
-    --accent-purple: #8B5CF6;
-    --text-primary: #F1F5F9;
-    --text-secondary: #94A3B8;
-    --text-muted: #475569;
-    --border: rgba(255,255,255,0.06);
-    --border-accent: rgba(239,68,68,0.3);
-    --shadow: 0 25px 50px rgba(0,0,0,0.5);
+:root{
+    /* Core neutrals */
+    --navy:#070C16;
+    --navy2:#0E1B2E;
+    --navy3:#142842;
+    --card:#FFFFFF;
+    --soft:#F3F7FC;
+    --line:#E2E9F2;
+    --text:#101827;
+    --muted:#64748B;
+
+    /* Brand gradient palette */
+    --teal:#0EA893;
+    --teal-dark:#087F73;
+    --teal-soft:#E4F9F5;
+    --violet:#7C5CFC;
+    --violet-soft:#F1EDFF;
+    --coral:#FF6B6B;
+    --coral-soft:#FFEDED;
+    --blue:#3B82F6;
+    --blue-soft:#EAF2FF;
+    --gold:#F0B429;
+    --gold-soft:#FFF6DF;
+
+    /* Status colors */
+    --green:#0F9D58;
+    --green-soft:#E7FBF0;
+    --amber:#D97706;
+    --amber-soft:#FFF4E0;
+    --red:#E53E3E;
+    --red-soft:#FFECEC;
 }
 
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+html, body, [class*="css"]{
+    font-family: 'Inter', Arial, sans-serif;
+}
+.stApp{
+    background:
+        radial-gradient(circle at 10% 0%, rgba(124,92,252,.05), transparent 40%),
+        radial-gradient(circle at 90% 10%, rgba(14,168,147,.06), transparent 45%),
+        #F3F7FC;
+    color:var(--text);
+}
+.block-container{
+    max-width:1500px;
+    padding:1.4rem 2.2rem 3rem;
 }
 
-.main { background-color: var(--bg-primary); }
-
-.block-container {
-    padding: 2rem 3rem 4rem 3rem;
-    max-width: 1400px;
+/* ---------------- Sidebar ---------------- */
+[data-testid="stSidebar"]{
+    background:linear-gradient(180deg,#070C16 0%, #0E1B2E 55%, #0B1830 100%) !important;
+    border-right:1px solid #1D2A40;
+}
+[data-testid="stSidebar"] *{
+    color:#E7EEF8;
+}
+[data-testid="stSidebar"] .stRadio label{
+    border-radius:10px;
+    padding:8px 10px;
+    transition:background .15s ease;
+}
+[data-testid="stSidebar"] .stRadio label:hover{
+    background:linear-gradient(90deg, rgba(14,168,147,.18), rgba(124,92,252,.10));
+}
+.sidebar-brand{
+    text-align:center;
+    padding:16px 4px 20px;
+    border-bottom:1px solid #24324A;
+    margin-bottom:22px;
+}
+.brand-heart{
+    font-size:44px;
+    line-height:1;
+    filter:drop-shadow(0 0 14px rgba(14,168,147,.55));
+}
+.brand-name{
+    background:linear-gradient(90deg,#5CE6D0,#9C8CFF);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+    font-size:23px;
+    font-weight:900;
+    margin-top:9px;
+    letter-spacing:.3px;
+}
+.brand-sub{
+    color:#8CA0BC;
+    font-size:11px;
+    letter-spacing:1.6px;
+    margin-top:4px;
+    text-transform:uppercase;
+}
+.side-title{
+    color:#7F93AE;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:1.4px;
+    text-transform:uppercase;
+    margin:12px 0 8px;
+}
+.status-box{
+    background:linear-gradient(160deg,#111C2F, #0D1729);
+    border:1px solid #24324A;
+    border-radius:14px;
+    padding:13px 14px;
+    margin-top:10px;
+}
+.status-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:7px 0;
+    font-size:12px;
+}
+.dot{
+    width:8px;
+    height:8px;
+    display:inline-block;
+    border-radius:50%;
+    margin-right:6px;
+    box-shadow:0 0 8px currentColor;
+}
+.side-footer{
+    color:#7F93AE;
+    text-align:center;
+    font-size:11px;
+    line-height:1.6;
+    margin-top:30px;
 }
 
-/* ---- SIDEBAR ---- */
-[data-testid="stSidebar"] {
-    background: var(--bg-secondary) !important;
-    border-right: 1px solid var(--border);
+/* ---------------- General controls ---------------- */
+.stButton > button{
+    background:linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%) !important;
+    color:white !important;
+    border:0 !important;
+    border-radius:12px !important;
+    font-weight:700 !important;
+    min-height:46px;
+    box-shadow:0 8px 20px rgba(8,127,115,.28);
+    transition:transform .15s ease, box-shadow .15s ease;
+}
+.stButton > button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 26px rgba(8,127,115,.36);
+}
+.stTextInput input,
+.stTextArea textarea{
+    background:#FFFFFF !important;
+    color:var(--text) !important;
+    border:1px solid var(--line) !important;
+    border-radius:10px !important;
+}
+.stSelectbox [data-baseweb="select"] > div{
+    background:#FFFFFF !important;
+    color:var(--text) !important;
+    border-color:var(--line) !important;
+    border-radius:10px !important;
+}
+.stSlider [data-baseweb="slider"]{
+    padding-top:5px;
+}
+.stSlider [data-testid="stThumbValue"]{
+    color:var(--teal-dark) !important;
+    font-weight:700 !important;
+}
+div[data-baseweb="slider"] > div > div > div{
+    background:linear-gradient(90deg, var(--teal), var(--violet)) !important;
+}
+h1,h2,h3,h4{
+    color:var(--text) !important;
+}
+.stCaption, small{
+    color:var(--muted) !important;
+}
+hr{
+    border-color:var(--line) !important;
+}
+[data-testid="stProgress"] > div > div{
+    background:linear-gradient(90deg, var(--teal), var(--violet)) !important;
 }
 
-[data-testid="stSidebar"] .stMarkdown { color: var(--text-secondary); }
-
-/* ---- BUTTONS ---- */
-.stButton > button {
-    width: 100%;
-    background: linear-gradient(135deg, #EF4444 0%, #DC2626 50%, #B91C1C 100%);
-    color: white;
-    border-radius: 14px;
-    height: 3.5em;
-    font-size: 16px;
-    border: none;
-    font-weight: 600;
-    font-family: 'Space Grotesk', sans-serif;
-    letter-spacing: 0.5px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 20px rgba(239,68,68,0.35);
+/* ---------------- Hero ---------------- */
+.hero{
+    background:linear-gradient(120deg,#070C16 0%, #0E2038 45%, #0A3D38 100%);
+    border-radius:24px;
+    padding:38px 40px;
+    color:white;
+    box-shadow:0 18px 45px rgba(7,12,22,.22);
+    margin-bottom:24px;
+    position:relative;
+    overflow:hidden;
+}
+.hero:after{
+    content:"";
+    position:absolute;
+    width:360px;
+    height:360px;
+    right:-120px;
+    top:-160px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(124,92,252,.28), transparent 70%);
+}
+.hero:before{
+    content:"";
+    position:absolute;
+    width:260px;
+    height:260px;
+    left:-90px;
+    bottom:-140px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(14,168,147,.30), transparent 70%);
+}
+.hero-badge{
+    display:inline-block;
+    background:rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.18);
+    color:#B9F2E8;
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    position:relative;
+}
+.hero h1{
+    color:white !important;
+    font-family:'Manrope', 'Inter', sans-serif;
+    font-size:clamp(30px,4vw,50px);
+    line-height:1.08;
+    margin:18px 0 10px;
+    font-weight:800;
+    position:relative;
+}
+.hero h1 span{
+    background:linear-gradient(90deg,#5CE6D0,#9C8CFF 70%);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+}
+.hero p{
+    color:#CBD9EA;
+    max-width:760px;
+    font-size:15.5px;
+    line-height:1.7;
+    margin:0;
+    position:relative;
+}
+.hero-pills{
+    margin-top:24px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px;
+    position:relative;
+}
+.pill{
+    padding:8px 13px;
+    border-radius:999px;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16);
+    color:#EAF4FF;
+    font-size:11.5px;
+    font-weight:700;
+    backdrop-filter:blur(6px);
 }
 
-.stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(239,68,68,0.5);
+/* ---------------- Cards ---------------- */
+.card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:24px;
+    box-shadow:0 6px 20px rgba(15,23,42,.05);
+    margin-bottom:18px;
+    border-top:3px solid transparent;
+    background-image:linear-gradient(#FFFFFF,#FFFFFF), linear-gradient(90deg, var(--teal), var(--violet));
+    background-origin:border-box;
+    background-clip:padding-box, border-box;
+}
+.card-title{
+    color:var(--text);
+    font-size:17.5px;
+    font-weight:800;
+    margin-bottom:4px;
+}
+.card-sub{
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
 }
 
-.stButton > button:active { transform: translateY(0px); }
+.metric-card{
+    background:linear-gradient(160deg,#FFFFFF, #F8FBFF);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px;
+    min-height:106px;
+    box-shadow:0 4px 16px rgba(15,23,42,.04);
+    transition:transform .15s ease, box-shadow .15s ease;
+}
+.metric-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 10px 24px rgba(15,23,42,.09);
+}
+.metric-label{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+}
+.metric-value{
+    font-size:25px;
+    font-weight:800;
+    margin-top:8px;
+    background:linear-gradient(90deg, var(--navy), var(--teal-dark));
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+}
+.metric-note{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:4px;
+}
+.tag{
+    display:inline-block;
+    border-radius:8px;
+    padding:5px 10px;
+    font-size:10px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+.normal{background:var(--green-soft);color:var(--green);}
+.warn{background:var(--amber-soft);color:var(--amber);}
+.danger{background:var(--red-soft);color:var(--red);}
 
-/* ---- SLIDERS ---- */
-.stSlider > div > div > div { background: var(--accent-red) !important; }
-
-/* ---- INPUTS ---- */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 10px !important;
-    color: var(--text-primary) !important;
-    font-family: 'DM Sans', sans-serif !important;
+/* ---------------- Chat ---------------- */
+.chat-header{
+    background:linear-gradient(120deg,#070C16, #142842 60%, #0A3D38);
+    border-radius:18px 18px 0 0;
+    padding:22px 24px;
+    color:white;
+    border:1px solid #1F3048;
+    position:relative;
+    overflow:hidden;
+}
+.chat-header:after{
+    content:"";
+    position:absolute;
+    width:220px;height:220px;
+    right:-80px;top:-100px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(124,92,252,.25), transparent 70%);
+}
+.chat-header-title{
+    font-size:20px;
+    font-weight:800;
+    position:relative;
+}
+.chat-header-sub{
+    color:#B7C6DA;
+    font-size:12.5px;
+    margin-top:5px;
+    position:relative;
+}
+[data-testid="stChatMessage"]{
+    border-radius:16px !important;
+    border:1px solid var(--line) !important;
+    background:#FFFFFF !important;
+    color:var(--text) !important;
+    box-shadow:0 3px 12px rgba(15,23,42,.035);
+}
+[data-testid="stChatMessage"] p{
+    color:var(--text) !important;
+    line-height:1.65;
+}
+[data-testid="stChatInput"]{
+    border-color:var(--line) !important;
+    border-radius:0 0 18px 18px !important;
 }
 
-.stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus {
-    border-color: var(--accent-red) !important;
-    box-shadow: 0 0 0 3px var(--accent-red-glow) !important;
+/* ---------------- Footer ---------------- */
+.footer{
+    background:linear-gradient(120deg,#070C16, #0E1B2E 60%, #0A3D38);
+    color:#AFC0D4;
+    border-radius:18px;
+    padding:26px;
+    text-align:center;
+    margin-top:32px;
+}
+.footer strong{
+    background:linear-gradient(90deg,#5CE6D0,#9C8CFF);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+}
+.disclaimer{
+    background:linear-gradient(160deg,#F8FAFC,#F1F6FC);
+    border:1px solid var(--line);
+    border-left:4px solid var(--gold);
+    border-radius:12px;
+    padding:13px 15px;
+    color:#5B6B80;
+    font-size:11.5px;
+    line-height:1.6;
 }
 
-/* ---- SELECTBOX ---- */
-.stSelectbox > div > div {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 10px !important;
-    color: var(--text-primary) !important;
+/* ---------------- Project Team ---------------- */
+.team-hero{
+    background:linear-gradient(120deg,#070C16 0%, #142842 55%, #0A3D38 100%);
+    border-radius:22px;
+    padding:30px 34px;
+    color:white;
+    box-shadow:0 14px 34px rgba(7,12,22,.18);
+    margin-bottom:22px;
+    position:relative;
+    overflow:hidden;
+}
+.team-hero:after{
+    content:"";
+    position:absolute;
+    width:260px;height:260px;
+    right:-90px;top:-120px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(124,92,252,.25), transparent 70%);
+}
+.team-hero-title{
+    font-family:'Manrope','Inter',sans-serif;
+    font-size:26px;
+    font-weight:800;
+    position:relative;
+}
+.team-hero-sub{
+    color:#CBD9EA;
+    font-size:13.5px;
+    margin-top:6px;
+    max-width:640px;
+    line-height:1.6;
+    position:relative;
+}
+.univ-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(255,255,255,.09);
+    border:1px solid rgba(255,255,255,.16);
+    color:#EAF4FF;
+    border-radius:999px;
+    padding:8px 14px;
+    font-size:12px;
+    font-weight:700;
+    margin-top:16px;
+    position:relative;
+}
+.team-card{
+    background:linear-gradient(160deg,#FFFFFF,#F8FBFF);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:26px 22px;
+    text-align:center;
+    box-shadow:0 6px 20px rgba(15,23,42,.05);
+    transition:transform .15s ease, box-shadow .15s ease;
+    height:100%;
+}
+.team-card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 14px 30px rgba(15,23,42,.10);
+}
+.team-avatar{
+    width:74px;
+    height:74px;
+    margin:0 auto 14px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:26px;
+    font-weight:800;
+    color:white;
+    background:linear-gradient(135deg, var(--teal), var(--violet));
+    box-shadow:0 8px 18px rgba(124,92,252,.25);
+}
+.team-name{
+    font-size:17px;
+    font-weight:800;
+    color:var(--text);
+}
+.team-roll{
+    display:inline-block;
+    margin-top:6px;
+    background:var(--teal-soft);
+    color:var(--teal-dark);
+    border-radius:999px;
+    padding:4px 12px;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:.3px;
+}
+.team-role{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:10px;
+}
+.guide-card{
+    background:linear-gradient(120deg,#0E1B2E,#142842 60%,#0A3D38);
+    border-radius:18px;
+    padding:26px 24px;
+    color:white;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    box-shadow:0 10px 26px rgba(7,12,22,.18);
+    margin-top:6px;
+}
+.guide-avatar{
+    width:64px;
+    height:64px;
+    min-width:64px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:24px;
+    font-weight:800;
+    background:linear-gradient(135deg,#5CE6D0,#9C8CFF);
+    color:#0B1220;
+}
+.guide-label{
+    color:#9FB0C7;
+    font-size:11px;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    font-weight:800;
+}
+.guide-name{
+    font-size:19px;
+    font-weight:800;
+    margin-top:4px;
+}
+.guide-role{
+    color:#CBD9EA;
+    font-size:12.5px;
+    margin-top:3px;
 }
 
-/* ---- METRICS ---- */
-[data-testid="metric-container"] {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 20px !important;
-    transition: all 0.2s ease;
+/* ---------------- Responsive ---------------- */
+@media(max-width:900px){
+    .block-container{padding:1rem 1rem 2rem;}
+    .hero{padding:28px 22px;}
 }
-
-[data-testid="metric-container"]:hover {
-    border-color: var(--border-accent);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-}
-
-[data-testid="metric-container"] label {
-    color: var(--text-secondary) !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.5px !important;
-}
-
-[data-testid="metric-container"] [data-testid="stMetricValue"] {
-    color: var(--text-primary) !important;
-    font-family: 'Space Grotesk', sans-serif !important;
-    font-size: 28px !important;
-    font-weight: 700 !important;
-}
-
-/* ---- PROGRESS ---- */
-.stProgress > div > div > div > div {
-    background: linear-gradient(90deg, var(--accent-red), var(--accent-orange)) !important;
-    border-radius: 10px !important;
-}
-.stProgress > div > div { 
-    background: var(--bg-card) !important; 
-    border-radius: 10px !important;
-    height: 10px !important;
-}
-
-/* ---- ALERTS ---- */
-.stSuccess {
-    background: rgba(16,185,129,0.1) !important;
-    border: 1px solid rgba(16,185,129,0.3) !important;
-    border-radius: 12px !important;
-    color: #6EE7B7 !important;
-}
-.stWarning {
-    background: rgba(249,115,22,0.1) !important;
-    border: 1px solid rgba(249,115,22,0.3) !important;
-    border-radius: 12px !important;
-}
-.stError {
-    background: rgba(239,68,68,0.1) !important;
-    border: 1px solid rgba(239,68,68,0.3) !important;
-    border-radius: 12px !important;
-}
-.stInfo {
-    background: rgba(59,130,246,0.1) !important;
-    border: 1px solid rgba(59,130,246,0.3) !important;
-    border-radius: 12px !important;
-}
-
-/* ---- DIVIDER ---- */
-hr { border-color: var(--border) !important; margin: 2rem 0 !important; }
-
-/* ---- TABS ---- */
-.stTabs [data-baseweb="tab-list"] {
-    background: var(--bg-card);
-    border-radius: 12px;
-    padding: 4px;
-    gap: 4px;
-    border: 1px solid var(--border);
-}
-.stTabs [data-baseweb="tab"] {
-    border-radius: 8px;
-    color: var(--text-secondary);
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-}
-.stTabs [aria-selected="true"] {
-    background: var(--accent-red) !important;
-    color: white !important;
-}
-
-/* ---- CHECKBOXES ---- */
-.stCheckbox > label { color: var(--text-secondary) !important; }
-
-/* ---- CUSTOM COMPONENTS ---- */
-.heartai-hero {
-    background: linear-gradient(135deg, #0D1421 0%, #111827 40%, #1a0a0a 100%);
-    border: 1px solid var(--border-accent);
-    border-radius: 24px;
-    padding: 60px 40px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 32px;
-}
-
-.heartai-hero::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at 50% 50%, rgba(239,68,68,0.05) 0%, transparent 60%);
-    pointer-events: none;
-}
-
-.hero-badge {
-    display: inline-block;
-    background: rgba(239,68,68,0.1);
-    border: 1px solid rgba(239,68,68,0.3);
-    color: #FCA5A5;
-    padding: 6px 16px;
-    border-radius: 100px;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 20px;
-    font-family: 'Space Grotesk', sans-serif;
-}
-
-.hero-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(36px, 5vw, 64px);
-    font-weight: 700;
-    color: white;
-    margin: 0 0 16px 0;
-    line-height: 1.1;
-    letter-spacing: -1px;
-}
-
-.hero-title span { color: var(--accent-red); }
-
-.hero-sub {
-    color: var(--text-secondary);
-    font-size: 18px;
-    font-weight: 400;
-    margin-bottom: 40px;
-    line-height: 1.6;
-}
-
-.stat-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-top: 40px;
-}
-
-.stat-item {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px 16px;
-    transition: all 0.2s ease;
-}
-
-.stat-item:hover {
-    border-color: var(--border-accent);
-    background: rgba(239,68,68,0.05);
-}
-
-.stat-value {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-
-.stat-label {
-    color: var(--text-muted);
-    font-size: 13px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.section-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 28px;
-    margin-bottom: 24px;
-    transition: border-color 0.2s ease;
-}
-
-.section-card:hover { border-color: rgba(255,255,255,0.1); }
-
-.section-header {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.section-desc {
-    color: var(--text-muted);
-    font-size: 14px;
-    margin-bottom: 24px;
-}
-
-.feature-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    padding: 8px 16px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin: 4px;
-    transition: all 0.2s ease;
-}
-
-.feature-pill:hover {
-    border-color: var(--border-accent);
-    color: var(--text-primary);
-}
-
-.risk-gauge-container {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 28px;
-    text-align: center;
-}
-
-.label-tag {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.tag-normal { background: rgba(16,185,129,0.15); color: #6EE7B7; }
-.tag-warning { background: rgba(249,115,22,0.15); color: #FED7AA; }
-.tag-danger { background: rgba(239,68,68,0.15); color: #FCA5A5; }
-
-.input-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-    font-family: 'Space Grotesk', sans-serif;
-}
-
-.result-card {
-    background: var(--bg-card);
-    border-radius: 20px;
-    padding: 32px;
-    margin-top: 24px;
-}
-
-.result-high {
-    border: 1px solid rgba(239,68,68,0.4);
-    background: linear-gradient(135deg, var(--bg-card), rgba(239,68,68,0.05));
-}
-
-.result-low {
-    border: 1px solid rgba(16,185,129,0.4);
-    background: linear-gradient(135deg, var(--bg-card), rgba(16,185,129,0.05));
-}
-
-.watermark {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 16px;
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-    z-index: 999;
-}
-
-.chat-bubble {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    border-bottom-left-radius: 4px;
-    padding: 14px 18px;
-    color: var(--text-secondary);
-    font-size: 15px;
-    line-height: 1.6;
-    margin-top: 12px;
-}
-
-.footer-bar {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 40px;
-    text-align: center;
-    margin-top: 40px;
-}
-
-.tech-badge {
-    display: inline-block;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--text-muted);
-    margin: 4px;
-}
-
-/* Subheader override */
-h1, h2, h3 {
-    font-family: 'Space Grotesk', sans-serif !important;
-    color: var(--text-primary) !important;
-}
-
-[data-testid="stSubheader"] {
-    font-family: 'Space Grotesk', sans-serif !important;
-    color: var(--text-primary) !important;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# LOAD MODEL (with graceful fallback for demo)
+# API / MODEL HELPERS
 # =========================================================
+if "GEMINI_API_KEY" not in st.secrets:
+    st.error("Gemini API key is not configured.")
+    st.info("Add GEMINI_API_KEY to .streamlit/secrets.toml and restart Streamlit.")
+    st.stop()
 
 @st.cache_resource
 def load_models():
     try:
         model = joblib.load("models/best_model.pkl")
         scaler = joblib.load("models/scaler.pkl")
-        return model, scaler
-    except Exception:
-        return None, None
+        return model, scaler, None
+    except Exception as exc:
+        return None, None, str(exc)
 
-model, scaler = load_models()
+model, scaler, model_error = load_models()
+
+@st.cache_resource
+def get_gemini_client():
+    return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
 # =========================================================
 # SIDEBAR
 # =========================================================
-
 with st.sidebar:
     st.markdown("""
-    <div style="padding:20px 0 10px 0; text-align:center;">
-        <div style="font-size:40px;">❤️</div>
-        <div style="font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:700; color:white; margin-top:8px;">HeartAI</div>
-        <div style="font-size:12px; color:#475569; margin-top:2px; font-family:'JetBrains Mono',monospace;">v2.0 · Clinical Edition</div>
+    <div class="sidebar-brand">
+        <div class="brand-heart">🫀</div>
+        <div class="brand-name">HeartAI</div>
+        <div class="brand-sub">Cardiac Intelligence</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("---")
-
-    st.markdown("""
-    <div style="padding:4px 0;">
-        <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-family:'Space Grotesk',sans-serif;">Navigation</div>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown('<div class="side-title">Workspace</div>', unsafe_allow_html=True)
     page = st.radio(
-        "",
-        ["🏠 Dashboard", "🔍 Predict", "📊 Analytics", "💬 AI Assistant"],
-        label_visibility="collapsed"
+        "Navigation",
+        ["🏠 Dashboard", "🔍 Prediction", "📊 Analytics", "💬 AI Assistant", "👥 Project Team"],
+        label_visibility="collapsed",
     )
 
-    st.markdown("---")
+    st.markdown('<div class="side-title">System status</div>', unsafe_allow_html=True)
+    model_status = "Online" if model is not None else "Demo mode"
+    model_color = "#35D399" if model is not None else "#F0B429"
 
-    st.markdown("""
-    <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-family:'Space Grotesk',sans-serif;">System Status</div>
-    """, unsafe_allow_html=True)
-
-    model_status = "🟢 Online" if model else "🟡 Demo Mode"
     st.markdown(f"""
-    <div style="display:flex; flex-direction:column; gap:8px; font-size:13px; color:#94A3B8;">
-        <div>🤖 ML Model &nbsp;&nbsp;<span style="color:#10B981; font-family:'JetBrains Mono',monospace; font-size:11px;">{model_status}</span></div>
-        <div>☁️ Cloud &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#10B981; font-family:'JetBrains Mono',monospace; font-size:11px;">🟢 Online</span></div>
-        <div>📡 Analytics &nbsp;<span style="color:#10B981; font-family:'JetBrains Mono',monospace; font-size:11px;">🟢 Active</span></div>
+    <div class="status-box">
+        <div class="status-row">
+            <span>🤖 ML Model</span>
+            <span><i class="dot" style="background:{model_color};color:{model_color}"></i>{model_status}</span>
+        </div>
+        <div class="status-row">
+            <span>☁️ Gemini</span>
+            <span><i class="dot" style="background:#35D399;color:#35D399"></i>Ready</span>
+        </div>
+        <div class="status-row">
+            <span>📊 Analytics</span>
+            <span><i class="dot" style="background:#7C5CFC;color:#7C5CFC"></i>Active</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("---")
     st.markdown("""
-    <div style="font-size:12px; color:#334155; text-align:center; line-height:1.8;">
-        Built with ❤️ by<br>
-        <span style="color:#64748B; font-weight:600;">Prem Sharma</span>
+    <div class="side-footer">
+        HeartAI is an academic project.<br>
+        AI output is informational, not a diagnosis.
     </div>
     """, unsafe_allow_html=True)
 
 # =========================================================
-# HERO SECTION
+# HERO
 # =========================================================
-
 st.markdown("""
-<div class="heartai-hero">
-    <div class="hero-badge">🔬 AI-Powered Cardiac Intelligence</div>
-    <h1 class="hero-title">Predict Heart Risk with <span>AI Precision</span></h1>
-    <p class="hero-sub">Advanced machine learning trained on clinical data to provide<br>real-time cardiac health assessment and personalized insights.</p>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-        <span class="feature-pill">⚡ Real-Time Analysis</span>
-        <span class="feature-pill">🧠 ML Powered</span>
-        <span class="feature-pill">🔒 HIPAA Compliant</span>
-        <span class="feature-pill">📱 Responsive</span>
-        <span class="feature-pill">☁️ Cloud Native</span>
-    </div>
-    <div class="stat-grid">
-        <div class="stat-item">
-            <div class="stat-value" style="color:#EF4444;">98.7%</div>
-            <div class="stat-label">Model Accuracy</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" style="color:#3B82F6;">50K+</div>
-            <div class="stat-label">Predictions Made</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" style="color:#10B981;">24/7</div>
-            <div class="stat-label">Availability</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value" style="color:#F97316;">&lt;1s</div>
-            <div class="stat-label">Response Time</div>
-        </div>
+<div class="hero">
+    <div class="hero-badge">AI-Assisted Cardiac Risk Screening</div>
+    <h1>Understand your heart health<br><span>with clarity.</span></h1>
+    <p>
+        HeartAI combines a machine-learning prediction model, visual analytics,
+        and a Gemini-powered health assistant in one clean dashboard.
+    </p>
+    <div class="hero-pills">
+        <span class="pill">⚡ Fast analysis</span>
+        <span class="pill">🧠 Machine learning</span>
+        <span class="pill">📈 Visual analytics</span>
+        <span class="pill">💬 AI assistant</span>
+        <span class="pill">🔒 API key protected</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# LIVE METRICS DASHBOARD
+# DASHBOARD METRICS
 # =========================================================
-
-st.markdown("""
-<div style="font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; color:#F1F5F9; margin-bottom:16px;">
-📡 Live Health Metrics
-<span style="font-size:11px; font-weight:400; color:#10B981; font-family:'JetBrains Mono',monospace; margin-left:10px;">● LIVE</span>
-</div>
-""", unsafe_allow_html=True)
-
-m1, m2, m3, m4, m5 = st.columns(5)
-
-metrics = [
-    ("❤️ Heart Rate", f"{random.randint(70,95)} BPM", f"+{random.randint(1,4)}"),
-    ("🩸 SpO₂", f"{random.randint(95,99)}%", f"+{random.randint(0,1)}"),
-    ("🔥 Calories", f"{random.randint(1400,2800)} kcal", None),
-    ("🚶 Steps", f"{random.randint(3000,11000):,}", f"+{random.randint(100,500)}"),
-    ("💤 Sleep", f"{random.uniform(6,9):.1f} hrs", None),
+m1, m2, m3, m4 = st.columns(4)
+dashboard_metrics = [
+    ("🫀 Heart rate", f"{random.randint(68, 88)} BPM", "Sample dashboard value"),
+    ("🩸 SpO₂", f"{random.randint(96, 99)}%", "Sample dashboard value"),
+    ("🚶 Activity", f"{random.randint(4, 10)}k", "Steps • sample value"),
+    ("😴 Sleep", f"{random.uniform(6.5, 8.5):.1f} h", "Sample dashboard value"),
 ]
-
-for col, (label, val, delta) in zip([m1,m2,m3,m4,m5], metrics):
+for col, (label, value, note) in zip((m1, m2, m3, m4), dashboard_metrics):
     with col:
-        if delta:
-            st.metric(label, val, delta)
-        else:
-            st.metric(label, val)
+        st.markdown(
+            f'<div class="metric-card"><div class="metric-label">{label}</div>'
+            f'<div class="metric-value">{value}</div><div class="metric-note">{note}</div></div>',
+            unsafe_allow_html=True,
+        )
 
 st.write("")
 
 # =========================================================
-# MAIN TABS
+# PREDICTION
 # =========================================================
-
-tab1, tab2, tab3 = st.tabs(["🔍 Prediction", "📊 Health Analytics", "💡 Insights"])
-
-# =========================================================
-# TAB 1 — PREDICTION
-# =========================================================
-
-with tab1:
-
+if page in ["🏠 Dashboard", "🔍 Prediction"]:
     st.markdown("""
-    <div class="section-card">
-        <div class="section-header">📝 Patient Information</div>
-        <div class="section-desc">Enter the patient's clinical parameters below for AI-powered cardiac risk assessment.</div>
+    <div class="card">
+        <div class="card-title">🔍 Cardiac Risk Prediction</div>
+        <div class="card-sub">
+            Enter the five parameters used by the current project model.
+            The result is a screening output and should not be treated as a medical diagnosis.
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 1, 1])
+    c1, c2, c3 = st.columns(3)
 
-    with col1:
-        st.markdown('<div class="input-label">Age (years)</div>', unsafe_allow_html=True)
-        age = st.slider("Age", 1, 120, 45, label_visibility="collapsed")
-        
-        st.markdown('<div class="input-label" style="margin-top:16px;">Blood Pressure (mmHg)</div>', unsafe_allow_html=True)
-        blood_pre = st.slider("Blood Pressure", 50, 250, 120, label_visibility="collapsed")
+    with c1:
+        age = st.slider("Age (years)", 1, 120, 45)
+        blood_pre = st.slider("Blood pressure (mmHg)", 50, 250, 120)
 
-        # BP classification
-        if blood_pre < 120:
-            bp_tag = '<span class="label-tag tag-normal">Normal</span>'
-        elif blood_pre < 130:
-            bp_tag = '<span class="label-tag tag-warning">Elevated</span>'
-        elif blood_pre < 140:
-            bp_tag = '<span class="label-tag tag-warning">Stage 1 HT</span>'
-        else:
-            bp_tag = '<span class="label-tag tag-danger">Stage 2 HT</span>'
-        st.markdown(bp_tag, unsafe_allow_html=True)
+        bp_label = "Normal" if blood_pre < 120 else "Elevated" if blood_pre < 130 else "High"
+        bp_class = "normal" if blood_pre < 120 else "warn" if blood_pre < 130 else "danger"
+        st.markdown(f'<span class="tag {bp_class}">{bp_label}</span>', unsafe_allow_html=True)
 
-    with col2:
-        st.markdown('<div class="input-label">Cholesterol (mg/dL)</div>', unsafe_allow_html=True)
-        cholesterol = st.slider("Cholesterol", 50, 500, 200, label_visibility="collapsed")
+    with c2:
+        cholesterol = st.slider("Cholesterol (mg/dL)", 50, 500, 200)
+        bmi = st.slider("BMI (kg/m²)", 10, 60, 25)
 
-        if cholesterol < 200:
-            chol_tag = '<span class="label-tag tag-normal">Desirable</span>'
-        elif cholesterol < 240:
-            chol_tag = '<span class="label-tag tag-warning">Borderline</span>'
-        else:
-            chol_tag = '<span class="label-tag tag-danger">High</span>'
-        st.markdown(chol_tag, unsafe_allow_html=True)
+        chol_class = "normal" if cholesterol < 200 else "warn" if cholesterol < 240 else "danger"
+        chol_label = "Desirable" if cholesterol < 200 else "Borderline" if cholesterol < 240 else "High"
+        st.markdown(f'<span class="tag {chol_class}">{chol_label}</span>', unsafe_allow_html=True)
 
-        st.markdown('<div class="input-label" style="margin-top:16px;">Body Mass Index (kg/m²)</div>', unsafe_allow_html=True)
-        bmi = st.slider("BMI", 10, 60, 25, label_visibility="collapsed")
+    with c3:
+        glucose_level = st.slider("Fasting glucose (mg/dL)", 20, 400, 100)
+        sex = st.selectbox("Sex", ["Male", "Female"])
+        smoker = st.selectbox("Smoking status", ["No", "Yes", "Former"])
 
-        if bmi < 18.5:
-            bmi_tag = '<span class="label-tag tag-warning">Underweight</span>'
-        elif bmi < 25:
-            bmi_tag = '<span class="label-tag tag-normal">Normal</span>'
-        elif bmi < 30:
-            bmi_tag = '<span class="label-tag tag-warning">Overweight</span>'
-        else:
-            bmi_tag = '<span class="label-tag tag-danger">Obese</span>'
-        st.markdown(bmi_tag, unsafe_allow_html=True)
+        gluc_class = "normal" if glucose_level < 100 else "warn" if glucose_level < 126 else "danger"
+        gluc_label = "Normal" if glucose_level < 100 else "Elevated" if glucose_level < 126 else "High"
+        st.markdown(f'<span class="tag {gluc_class}">{gluc_label}</span>', unsafe_allow_html=True)
 
-    with col3:
-        st.markdown('<div class="input-label">Fasting Glucose (mg/dL)</div>', unsafe_allow_html=True)
-        glucose_level = st.slider("Glucose", 20, 400, 100, label_visibility="collapsed")
+    # Keep the same five model inputs used by the uploaded project.
+    input_data = np.array([[age, blood_pre, cholesterol, bmi, glucose_level]], dtype=float)
 
-        if glucose_level < 100:
-            gluc_tag = '<span class="label-tag tag-normal">Normal</span>'
-        elif glucose_level < 126:
-            gluc_tag = '<span class="label-tag tag-warning">Pre-diabetic</span>'
-        else:
-            gluc_tag = '<span class="label-tag tag-danger">Diabetic Range</span>'
-        st.markdown(gluc_tag, unsafe_allow_html=True)
-
-        st.markdown('<div class="input-label" style="margin-top:16px;">Sex</div>', unsafe_allow_html=True)
-        sex = st.selectbox("Sex", ["Male", "Female"], label_visibility="collapsed")
-
-        st.markdown('<div class="input-label" style="margin-top:16px;">Smoker</div>', unsafe_allow_html=True)
-        smoker = st.selectbox("Smoker", ["No", "Yes", "Former"], label_visibility="collapsed")
-
-    st.write("")
-
-    # AI Health Score
     risk_factors = 0
-    if blood_pre >= 130: risk_factors += 1
-    if cholesterol >= 200: risk_factors += 1
-    if bmi >= 25: risk_factors += 1
-    if glucose_level >= 100: risk_factors += 1
-    if smoker == "Yes": risk_factors += 2
-    if age > 60: risk_factors += 1
+    if blood_pre >= 130:
+        risk_factors += 1
+    if cholesterol >= 200:
+        risk_factors += 1
+    if bmi >= 25:
+        risk_factors += 1
+    if glucose_level >= 100:
+        risk_factors += 1
+    if smoker == "Yes":
+        risk_factors += 2
+    if age > 60:
+        risk_factors += 1
 
-    health_score = max(30, 100 - (risk_factors * 10) - random.randint(0, 5))
+    preliminary_score = max(30, min(100, 100 - risk_factors * 10))
 
     st.markdown(f"""
-    <div class="section-card">
-        <div class="section-header">🧠 Preliminary Health Score</div>
-        <div class="section-desc">Based on entered parameters — not a clinical diagnosis</div>
+    <div class="card">
+        <div class="card-title">🧠 Preliminary Health Score</div>
+        <div class="card-sub">A simple visual indicator based on the entered values. It is separate from the ML model probability.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        st.progress(health_score / 100)
-    with c2:
-        color = "#10B981" if health_score > 75 else "#F97316" if health_score > 55 else "#EF4444"
-        st.markdown(f'<div style="font-family:\'Space Grotesk\',sans-serif; font-size:28px; font-weight:700; color:{color};">{health_score}%</div>', unsafe_allow_html=True)
+    pc1, pc2 = st.columns([5, 1])
+    with pc1:
+        st.progress(preliminary_score / 100)
+    with pc2:
+        score_class = "normal" if preliminary_score >= 70 else "warn" if preliminary_score >= 50 else "danger"
+        st.markdown(
+            f'<div style="text-align:right;font-size:24px;font-weight:800;color:'
+            f'{"#0F9D58" if score_class=="normal" else "#D97706" if score_class=="warn" else "#E53E3E"}">'
+            f'{preliminary_score}%</div>',
+            unsafe_allow_html=True,
+        )
 
-    st.write("")
+    if st.button("🔍 Run Cardiac Risk Analysis", type="primary", use_container_width=True):
+        with st.spinner("Analyzing the entered parameters..."):
+            time.sleep(0.6)
 
-    # ---- PREDICT BUTTON ----
-    predict_col, _ = st.columns([1, 2])
-    with predict_col:
-        predict_clicked = st.button("🔍 Run Cardiac Risk Analysis", key="predict_btn")
+            if model is not None and scaler is not None:
+                try:
+                    input_scaled = scaler.transform(input_data)
+                    prediction = int(model.predict(input_scaled)[0])
 
-    if predict_clicked:
+                    if hasattr(model, "predict_proba"):
+                        probability = model.predict_proba(input_scaled)
+                        risk_score = float(probability[0][1])
+                    else:
+                        risk_score = float(prediction)
+                except Exception as exc:
+                    st.error(f"Model prediction failed: {exc}")
+                    st.stop()
+            else:
+                risk_score = min(0.95, max(0.05, (risk_factors / 7)))
+                prediction = int(risk_score >= 0.5)
 
-        input_data = np.array([[age, blood_pre, cholesterol, bmi, glucose_level]])
-
-        with st.spinner("🤖 Analyzing clinical parameters..."):
-            time.sleep(1.8)
-
-        # Model prediction
-        if model and scaler:
-            input_scaled = scaler.transform(input_data)
-            prediction = model.predict(input_scaled)[0]
-            probability = model.predict_proba(input_scaled)
-            risk_score = probability[0][1]
-        else:
-            # Demo fallback
-            risk_score = min(0.95, max(0.05, (risk_factors / 7) + random.uniform(-0.1, 0.1)))
-            prediction = 1 if risk_score > 0.5 else 0
-
-        result_class = "result-high" if prediction == 1 else "result-low"
-        result_icon = "⚠️" if prediction == 1 else "✅"
-        result_text = "High Cardiac Risk Detected" if prediction == 1 else "Low Cardiac Risk"
-        result_color = "#EF4444" if prediction == 1 else "#10B981"
+        result_high = prediction == 1
+        result_color = "#E53E3E" if result_high else "#0F9D58"
+        result_bg = "linear-gradient(135deg,#FFECEC,#FFF5F5)" if result_high else "linear-gradient(135deg,#E7FBF0,#F3FFF8)"
+        result_icon = "⚠️" if result_high else "✅"
+        result_title = "Higher predicted cardiac risk" if result_high else "Lower predicted cardiac risk"
 
         st.markdown(f"""
-        <div class="result-card {result_class}">
-            <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px;">
-                <div style="font-size:48px;">{result_icon}</div>
-                <div>
-                    <div style="font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:{result_color};">{result_text}</div>
-                    <div style="color:#64748B; font-size:14px; margin-top:4px;">AI Confidence: {risk_score*100:.1f}% | Analysis Time: 1.8s</div>
-                </div>
+        <div style="background:{result_bg};border:1px solid {result_color}33;border-radius:18px;padding:24px;margin-top:18px;box-shadow:0 8px 24px rgba(15,23,42,.06);">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.8px;color:{result_color};text-transform:uppercase;">Screening result</div>
+            <div style="font-size:28px;font-weight:800;color:{result_color};margin-top:7px;">{result_icon} {result_title}</div>
+            <div style="color:#64748B;font-size:13px;margin-top:6px;">
+                Model output probability: <strong>{risk_score*100:.1f}%</strong>
+                {" • Demo fallback is active" if model is None else ""}
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Risk gauge chart
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number+delta",
-            value=risk_score * 100,
-            title={"text": "Risk Score (%)", "font": {"size": 16, "color": "#94A3B8", "family": "Space Grotesk"}},
-            delta={"reference": 50, "valueformat": ".1f"},
-            gauge={
-                "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#334155"},
-                "bar": {"color": "#EF4444" if risk_score > 0.5 else "#10B981", "thickness": 0.3},
-                "bgcolor": "#111827",
-                "borderwidth": 0,
-                "steps": [
-                    {"range": [0, 33], "color": "rgba(16,185,129,0.15)"},
-                    {"range": [33, 66], "color": "rgba(249,115,22,0.15)"},
-                    {"range": [66, 100], "color": "rgba(239,68,68,0.15)"},
-                ],
-                "threshold": {
-                    "line": {"color": "#F1F5F9", "width": 2},
-                    "thickness": 0.75,
-                    "value": risk_score * 100
-                }
-            },
-            number={"suffix": "%", "font": {"size": 36, "color": "#F1F5F9", "family": "Space Grotesk"}}
-        ))
+        g1, g2 = st.columns(2)
 
-        fig_gauge.update_layout(
-            paper_bgcolor="#111827",
-            plot_bgcolor="#111827",
-            font={"color": "#94A3B8"},
-            height=280,
-            margin=dict(l=20, r=20, t=40, b=10)
-        )
-
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.plotly_chart(fig_gauge, use_container_width=True)
-
-        # Radar chart
-        with c2:
-            categories = ['Blood Pressure', 'Cholesterol', 'BMI', 'Glucose', 'Age Factor']
-            bp_norm = min(100, (blood_pre / 180) * 100)
-            chol_norm = min(100, (cholesterol / 300) * 100)
-            bmi_norm = min(100, (bmi / 40) * 100)
-            gluc_norm = min(100, (glucose_level / 200) * 100)
-            age_norm = min(100, (age / 80) * 100)
-            values = [bp_norm, chol_norm, bmi_norm, gluc_norm, age_norm]
-
-            fig_radar = go.Figure()
-            fig_radar.add_trace(go.Scatterpolar(
-                r=values + [values[0]],
-                theta=categories + [categories[0]],
-                fill='toself',
-                fillcolor='rgba(239,68,68,0.15)',
-                line=dict(color='#EF4444', width=2),
-                name='Patient'
+        with g1:
+            gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=risk_score * 100,
+                title={"text": "Model risk probability", "font": {"size": 15, "color": "#475569"}},
+                number={"suffix": "%", "font": {"size": 34, "color": "#101827"}},
+                gauge={
+                    "axis": {"range": [0, 100], "tickcolor": "#94A3B8"},
+                    "bar": {"color": result_color, "thickness": 0.28},
+                    "bgcolor": "#FFFFFF",
+                    "borderwidth": 1,
+                    "bordercolor": "#E2E9F2",
+                    "steps": [
+                        {"range": [0, 33], "color": "#E7FBF0"},
+                        {"range": [33, 66], "color": "#FFF4E0"},
+                        {"range": [66, 100], "color": "#FFECEC"},
+                    ],
+                },
             ))
-            fig_radar.add_trace(go.Scatterpolar(
-                r=[50, 50, 50, 50, 50, 50],
-                theta=categories + [categories[0]],
-                fill='toself',
-                fillcolor='rgba(59,130,246,0.05)',
-                line=dict(color='#3B82F6', width=1, dash='dot'),
-                name='Avg Baseline'
-            ))
-            fig_radar.update_layout(
-                polar=dict(
-                    bgcolor="#111827",
-                    radialaxis=dict(visible=True, range=[0, 100], color="#334155", gridcolor="#1E293B"),
-                    angularaxis=dict(color="#64748B", gridcolor="#1E293B")
-                ),
-                paper_bgcolor="#111827",
-                plot_bgcolor="#111827",
-                font=dict(color="#94A3B8", family="DM Sans"),
-                showlegend=True,
-                legend=dict(bgcolor="#111827", bordercolor="#1E293B"),
-                height=280,
-                margin=dict(l=40, r=40, t=40, b=10),
-                title=dict(text="Risk Factor Radar", font=dict(color="#94A3B8", size=14, family="Space Grotesk"))
+            gauge.update_layout(
+                paper_bgcolor="#FFFFFF",
+                plot_bgcolor="#FFFFFF",
+                height=300,
+                margin=dict(l=20, r=20, t=55, b=10),
             )
-            st.plotly_chart(fig_radar, use_container_width=True)
+            st.plotly_chart(gauge, width="stretch", config={"displayModeBar": False})
 
-        # Bar chart
-        chart_data = pd.DataFrame({
-            "Factor": ["Blood Pressure", "Cholesterol", "BMI", "Glucose"],
-            "Value": [blood_pre, cholesterol, bmi, glucose_level],
-            "Normal Max": [120, 200, 25, 100]
-        })
+        with g2:
+            factors = ["Blood pressure", "Cholesterol", "BMI", "Glucose", "Age"]
+            values = [
+                min(100, blood_pre / 180 * 100),
+                min(100, cholesterol / 300 * 100),
+                min(100, bmi / 40 * 100),
+                min(100, glucose_level / 200 * 100),
+                min(100, age / 80 * 100),
+            ]
+            radar = go.Figure()
+            radar.add_trace(go.Scatterpolar(
+                r=values + [values[0]],
+                theta=factors + [factors[0]],
+                fill="toself",
+                fillcolor="rgba(124,92,252,.16)",
+                line=dict(color="#7C5CFC", width=2),
+                marker=dict(size=6, color="#0EA893"),
+                name="Entered values",
+            ))
+            radar.update_layout(
+                polar=dict(
+                    bgcolor="#FFFFFF",
+                    radialaxis=dict(range=[0, 100], gridcolor="#E2E8F0", color="#64748B"),
+                    angularaxis=dict(gridcolor="#E2E8F0", color="#475569"),
+                ),
+                paper_bgcolor="#FFFFFF",
+                font=dict(color="#475569"),
+                height=300,
+                margin=dict(l=40, r=40, t=35, b=10),
+                showlegend=False,
+            )
+            st.plotly_chart(radar, width="stretch", config={"displayModeBar": False})
 
-        fig_bar = go.Figure()
-        fig_bar.add_trace(go.Bar(
-            name='Patient Value',
-            x=chart_data["Factor"],
-            y=chart_data["Value"],
-            marker_color=['#EF4444' if v > n else '#10B981'
-                          for v, n in zip(chart_data["Value"], chart_data["Normal Max"])],
-            marker_line_width=0,
-            opacity=0.85
-        ))
-        fig_bar.add_trace(go.Bar(
-            name='Normal Threshold',
-            x=chart_data["Factor"],
-            y=chart_data["Normal Max"],
-            marker_color='rgba(59,130,246,0.3)',
-            marker_line_color='#3B82F6',
-            marker_line_width=1,
-        ))
-
-        fig_bar.update_layout(
-            barmode='group',
-            paper_bgcolor="#111827",
-            plot_bgcolor="#111827",
-            font=dict(color="#94A3B8", family="DM Sans"),
-            title=dict(text="Clinical Parameters vs Normal Range", font=dict(color="#94A3B8", size=14, family="Space Grotesk")),
-            xaxis=dict(gridcolor="#1E293B", linecolor="#1E293B"),
-            yaxis=dict(gridcolor="#1E293B", linecolor="#1E293B"),
-            legend=dict(bgcolor="#111827"),
-            height=300,
-            margin=dict(l=20, r=20, t=50, b=20)
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        # Recommendations
         st.markdown("""
-        <div class="section-card" style="margin-top:8px;">
-            <div class="section-header">💊 Clinical Recommendations</div>
+        <div class="disclaimer">
+            <strong>Important:</strong> This prediction is an academic ML screening output.
+            It does not diagnose heart disease and should not be used to start, stop, or change medication.
+            If you have concerning symptoms, seek appropriate medical care.
         </div>
         """, unsafe_allow_html=True)
 
-        r1, r2 = st.columns(2)
-
-        with r1:
-            st.markdown("**Immediate Actions**")
-            if prediction == 1:
-                st.error("""
-                🏥 Consult a cardiologist immediately  
-                💊 Review current medications  
-                📉 Reduce sodium and saturated fat intake  
-                🚭 Cease smoking / tobacco use  
-                📊 Monitor BP daily
-                """)
-            else:
-                st.success("""
-                ✅ Continue current healthy habits  
-                🥗 Maintain balanced diet  
-                🏃 Keep up regular exercise  
-                💧 Stay well hydrated  
-                📅 Annual health checkups
-                """)
-
-        with r2:
-            st.markdown("**Long-Term Strategy**")
-            st.info(f"""
-            🎂 Age: {age} years — {'Higher risk bracket' if age > 55 else 'Moderate risk bracket'}  
-            ⚖️ BMI: {bmi} — {'Reduce weight gradually' if bmi >= 25 else 'Maintain current weight'}  
-            🧪 Cholesterol: {cholesterol} mg/dL — {'Consult dietitian' if cholesterol >= 200 else 'Levels acceptable'}  
-            🩸 BP: {blood_pre} mmHg — {'Reduce sodium, exercise' if blood_pre >= 130 else 'Maintain lifestyle'}
-            """)
-
-        # Goals tracker
-        st.markdown("**🎯 Daily Health Goals**")
-        g1, g2, g3, g4, g5 = st.columns(5)
-        goals = {
-            g1: "🚶 10K Steps",
-            g2: "💧 3L Water",
-            g3: "🥗 Healthy Diet",
-            g4: "🏃 30min Exercise",
-            g5: "😴 8hrs Sleep"
-        }
-        checks = []
-        for col, label in goals.items():
-            with col:
-                checks.append(st.checkbox(label, key=f"goal_{label}"))
-
-        completed = sum(checks)
-        st.progress(completed / 5)
-        st.caption(f"Daily goals completed: {completed}/5 {'🔥' if completed == 5 else ''}")
-
 # =========================================================
-# TAB 2 — ANALYTICS
+# ANALYTICS
 # =========================================================
-
-with tab2:
+if page in ["🏠 Dashboard", "📊 Analytics"]:
+    st.write("")
     st.markdown("""
-    <div class="section-card">
-        <div class="section-header">📈 Health Analytics Dashboard</div>
-        <div class="section-desc">Visualize trends and population-level cardiac health data.</div>
+    <div class="card">
+        <div class="card-title">📊 Health Analytics</div>
+        <div class="card-sub">Interactive sample trends for demonstrating the dashboard interface.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Simulated trend data
-    days = pd.date_range(end=datetime.today(), periods=30)
-    trend_df = pd.DataFrame({
+    days = pd.date_range(end=datetime.now(), periods=30)
+    rng = np.random.default_rng(42)
+    trend = pd.DataFrame({
         "Date": days,
-        "Heart Rate": [random.randint(68, 95) for _ in range(30)],
-        "BP Systolic": [random.randint(110, 145) for _ in range(30)],
-        "Glucose": [random.randint(85, 130) for _ in range(30)],
+        "Heart Rate": rng.integers(68, 92, 30),
+        "Systolic BP": rng.integers(112, 142, 30),
+        "Glucose": rng.integers(85, 128, 30),
     })
 
-    fig_trend = go.Figure()
-    for col, color in [("Heart Rate", "#EF4444"), ("BP Systolic", "#3B82F6"), ("Glucose", "#F97316")]:
-        fig_trend.add_trace(go.Scatter(
-            x=trend_df["Date"], y=trend_df[col],
-            name=col, line=dict(color=color, width=2),
-            fill='tonexty' if col != "Heart Rate" else None,
-            fillcolor=f"rgba({','.join(str(int(color[i:i+2],16)) for i in (1,3,5))},0.05)"
+    fig = go.Figure()
+    for name, color in [
+        ("Heart Rate", "#E53E3E"),
+        ("Systolic BP", "#3B82F6"),
+        ("Glucose", "#F0B429"),
+    ]:
+        fig.add_trace(go.Scatter(
+            x=trend["Date"],
+            y=trend[name],
+            name=name,
+            mode="lines+markers",
+            line=dict(color=color, width=2.5, shape="spline"),
+            marker=dict(size=5),
         ))
-
-    fig_trend.update_layout(
-        paper_bgcolor="#111827", plot_bgcolor="#111827",
-        font=dict(color="#94A3B8", family="DM Sans"),
-        title=dict(text="30-Day Health Trends", font=dict(color="#94A3B8", size=14, family="Space Grotesk")),
-        xaxis=dict(gridcolor="#1E293B", linecolor="#1E293B"),
-        yaxis=dict(gridcolor="#1E293B", linecolor="#1E293B"),
-        legend=dict(bgcolor="#111827"),
-        height=350, margin=dict(l=20, r=20, t=50, b=20)
+    fig.update_layout(
+        title="30-Day Sample Health Trends",
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        font=dict(color="#475569"),
+        height=360,
+        hovermode="x unified",
+        legend=dict(orientation="h", y=1.12),
+        xaxis=dict(gridcolor="#E2E8F0"),
+        yaxis=dict(gridcolor="#E2E8F0"),
+        margin=dict(l=20, r=20, t=65, b=20),
     )
-    st.plotly_chart(fig_trend, use_container_width=True)
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
-    # Distribution chart
     a1, a2 = st.columns(2)
     with a1:
-        age_groups = ["20-30", "31-40", "41-50", "51-60", "61-70", "71+"]
-        risk_pct = [8, 12, 22, 38, 55, 70]
-        fig_age = px.bar(
-            x=age_groups, y=risk_pct,
-            labels={"x": "Age Group", "y": "Risk % (population)"},
-            title="Cardiac Risk by Age Group",
-            color=risk_pct,
-            color_continuous_scale=["#10B981", "#F97316", "#EF4444"]
-        )
-        fig_age.update_layout(
-            paper_bgcolor="#111827", plot_bgcolor="#111827",
-            font=dict(color="#94A3B8", family="DM Sans"),
-            title_font=dict(color="#94A3B8", family="Space Grotesk"),
-            xaxis=dict(gridcolor="#1E293B"), yaxis=dict(gridcolor="#1E293B"),
-            height=300, margin=dict(l=20, r=20, t=50, b=20),
-            showlegend=False, coloraxis_showscale=False
-        )
-        st.plotly_chart(fig_age, use_container_width=True)
+        water = st.slider("💧 Water intake (glasses)", 0, 16, 8)
+        st.progress(min(water / 12, 1.0))
+        st.caption(f"{water} glasses logged today")
 
     with a2:
-        factors = ["Cholesterol", "Hypertension", "Smoking", "Diabetes", "Obesity", "Inactivity"]
-        importance = [0.28, 0.22, 0.19, 0.15, 0.10, 0.06]
-        colors = ["#EF4444", "#F97316", "#EAB308", "#10B981", "#3B82F6", "#8B5CF6"]
-
-        fig_pie = go.Figure(go.Pie(
-            labels=factors, values=importance,
-            hole=0.55,
-            marker=dict(colors=colors, line=dict(color="#111827", width=2)),
-            textfont=dict(family="DM Sans", size=12)
-        ))
-        fig_pie.update_layout(
-            paper_bgcolor="#111827",
-            font=dict(color="#94A3B8"),
-            title=dict(text="Top Risk Factor Weightings", font=dict(color="#94A3B8", size=14, family="Space Grotesk")),
-            legend=dict(bgcolor="#111827"),
-            height=300, margin=dict(l=20, r=20, t=50, b=20)
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    # Water & Exercise tracker
-    st.markdown("---")
-    t1, t2 = st.columns(2)
-
-    with t1:
-        st.markdown("**💧 Daily Water Intake**")
-        water = st.slider("Glasses (250ml each)", 0, 16, 8, key="water_slider")
-        water_pct = water / 12
-        st.progress(min(water_pct, 1.0))
-        if water >= 8:
-            st.success(f"Excellent! {water} glasses = {water * 250}ml ✅")
-        else:
-            st.warning(f"{water} glasses — aim for at least 8 daily ⚠️")
-
-    with t2:
-        st.markdown("**🏋️ Exercise Log**")
-        exercise = st.selectbox("Activity Type", ["🚶 Walking", "🏃 Running", "💪 Gym", "🚴 Cycling", "🧘 Yoga", "🏊 Swimming", "⚽ Sports"])
-        duration = st.slider("Duration (minutes)", 5, 120, 30, key="exercise_slider")
-        calories_burned = int(duration * {"🚶 Walking": 4, "🏃 Running": 10, "💪 Gym": 7, "🚴 Cycling": 8, "🧘 Yoga": 3, "🏊 Swimming": 9, "⚽ Sports": 8}.get(exercise, 5))
-        st.info(f"🔥 Estimated calories burned: **{calories_burned} kcal**")
+        duration = st.slider("🏃 Exercise duration (minutes)", 0, 120, 30)
+        st.progress(min(duration / 60, 1.0))
+        st.caption(f"{duration} minutes logged today")
 
 # =========================================================
-# TAB 3 — INSIGHTS
+# AI ASSISTANT
 # =========================================================
-
-with tab3:
+if page in ["🏠 Dashboard", "💬 AI Assistant"]:
+    st.write("")
     st.markdown("""
-    <div class="section-card">
-        <div class="section-header">💡 AI Health Insights</div>
-        <div class="section-desc">Evidence-based cardiac health guidance and recommendations.</div>
+    <div class="chat-header">
+        <div class="chat-header-title">💬 HeartAI Health Assistant</div>
+        <div class="chat-header-sub">Ask about heart health, nutrition, exercise, symptoms, or your prediction result.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    insights = [
-        ("🫀", "Heart Health Basics", "The heart beats ~100,000 times per day. Keeping resting HR between 60-100 BPM indicates healthy cardiac function. Athletes often have lower resting HR (40-60 BPM)."),
-        ("🩸", "Blood Pressure Guide", "Normal BP is below 120/80 mmHg. Stage 1 hypertension (130-139/80-89) requires lifestyle changes. Stage 2 (≥140/90) typically requires medication."),
-        ("🧪", "Cholesterol & Heart Risk", "Total cholesterol above 240 mg/dL doubles heart disease risk. LDL ('bad') should be under 100 mg/dL. HDL ('good') above 60 mg/dL is protective."),
-        ("⚖️", "BMI & Cardiac Load", "Obesity increases cardiac workload significantly. Even 5-10% weight loss can reduce BP by 5 mmHg and cut heart disease risk by 20%."),
-        ("🏃", "Exercise & Heart Health", "150 minutes of moderate aerobic activity per week reduces cardiovascular disease risk by 35%. High-intensity interval training shows even greater benefit."),
-        ("😴", "Sleep & Cardiac Recovery", "Less than 6 hours of sleep increases heart attack risk by 20%. The heart rate and BP naturally drop during deep sleep, allowing cardiac recovery."),
+    emergency_keywords = [
+        "heart attack", "cardiac arrest", "severe chest pain",
+        "chest pain right now", "chest pain now", "can't breathe",
+        "cannot breathe", "difficulty breathing", "severe shortness of breath",
+        "fainting and chest pain",
     ]
 
-    for i in range(0, len(insights), 2):
-        c1, c2 = st.columns(2)
-        for col, item in zip([c1, c2], insights[i:i+2]):
-            icon, title, desc = item
-            with col:
-                st.markdown(f"""
-                <div class="section-card" style="height:100%;">
-                    <div style="font-size:32px; margin-bottom:12px;">{icon}</div>
-                    <div style="font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:600; color:#F1F5F9; margin-bottom:8px;">{title}</div>
-                    <div style="color:#64748B; font-size:14px; line-height:1.7;">{desc}</div>
-                </div>
-                """, unsafe_allow_html=True)
+    def get_gemini_response(question):
+        q = question.lower().strip()
+
+        if not q:
+            return "Please type a question about heart health or related topics."
+
+        if any(k in q for k in emergency_keywords):
+            return (
+                "⚠️ **This may be a medical emergency.** If you are currently "
+                "experiencing severe or new chest pain, severe breathing difficulty, "
+                "fainting, or symptoms that could indicate a heart attack or cardiac "
+                "emergency, seek emergency medical care immediately. HeartAI cannot "
+                "diagnose or treat emergencies."
+            )
+
+        prompt = f"""
+You are HeartAI, a helpful AI health assistant inside a student heart-disease
+prediction project.
+
+Answer clearly and naturally. Focus on heart/cardiovascular health, nutrition,
+exercise, lifestyle, risk factors, symptoms, and interpretation of this project's
+screening output.
+
+Safety rules:
+- Do not diagnose diseases.
+- Do not replace a doctor.
+- Do not prescribe or change medication doses.
+- For potentially serious symptoms, recommend professional medical evaluation.
+- For emergency symptoms, advise immediate emergency medical care.
+- Use simple language and answer the question directly first.
+- If unrelated to health, politely explain that HeartAI focuses on heart and health topics.
+
+User question:
+{question}
+"""
+
+        try:
+            client = get_gemini_client()
+            response = client.models.generate_content(
+                model="gemini-3.5-flash-lite",
+                contents=prompt,
+            )
+            text = getattr(response, "text", None)
+            if text:
+                return text.strip()
+            return "I couldn't generate a response. Please try again."
+        except Exception:
+            return (
+                "⚠️ Gemini is temporarily unavailable. "
+                "Please verify your API key, internet connection, and selected Gemini model."
+            )
+
+    if "heartai_chat_history" not in st.session_state:
+        st.session_state.heartai_chat_history = []
+
+    for message in st.session_state.heartai_chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    question = st.chat_input("Ask HeartAI anything about heart health...")
+
+    if question:
+        st.session_state.heartai_chat_history.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.markdown(question)
+
+        with st.chat_message("assistant"):
+            with st.spinner("HeartAI is thinking..."):
+                answer = get_gemini_response(question)
+            st.markdown(answer)
+
+        st.session_state.heartai_chat_history.append({"role": "assistant", "content": answer})
 
 # =========================================================
-# AI CHAT ASSISTANT
+# PROJECT TEAM
 # =========================================================
-
-st.write("")
-st.markdown("""
-<div class="section-card">
-    <div class="section-header">💬 AI Health Assistant</div>
-    <div class="section-desc">Ask anything about heart health, nutrition, exercise, or your results.</div>
-</div>
-""", unsafe_allow_html=True)
-
-question = st.text_input(
-    "Ask your question...",
-    placeholder="e.g. What foods reduce cholesterol? How does smoking affect the heart?",
-    label_visibility="collapsed"
-)
-
-ai_responses = {
-    "cholesterol": "To reduce cholesterol: eat oats, nuts, olive oil, and fatty fish. Avoid trans fats and processed foods. Regular aerobic exercise can raise HDL by 5-10%.",
-    "blood pressure": "Lower BP naturally: reduce sodium to under 2300mg/day, exercise 30min daily, limit alcohol, quit smoking, and manage stress through meditation or yoga.",
-    "heart": "For a healthy heart: exercise regularly, eat a Mediterranean-style diet, maintain healthy weight, avoid smoking, limit alcohol, and get 7-9 hours of sleep.",
-    "bmi": "Healthy BMI range is 18.5-24.9. Combine caloric deficit with strength training for sustainable weight loss. Crash diets often cause muscle loss and metabolic slowdown.",
-    "glucose": "Control blood sugar: reduce refined carbs and sugar, eat high-fiber foods, exercise regularly, and maintain healthy weight. Monitor regularly if pre-diabetic.",
-    "sleep": "Sleep improves heart health by lowering BP and cortisol. Aim for 7-9 hours. Maintain consistent sleep schedule and avoid screens 1 hour before bed.",
-    "exercise": "For heart health: 150 min/week moderate cardio (walking, cycling) plus 2 strength sessions. Even 10-min walks significantly benefit cardiac function.",
-    "smoking": "Smoking damages coronary arteries, raises BP, and reduces oxygen delivery. Risk drops 50% within 1 year of quitting and nearly normalizes after 15 years.",
-    "stress": "Chronic stress raises cortisol, which elevates BP and promotes inflammation. Meditation, yoga, regular exercise, and social connection all reduce cardiac risk.",
-}
-
-if question:
-    response = "I understand your concern. For personalized cardiac health advice, please consult a licensed cardiologist or healthcare professional. General guidance: maintain an active lifestyle, eat a heart-healthy diet, avoid smoking, manage stress, and get regular checkups."
-    for keyword, resp in ai_responses.items():
-        if keyword in question.lower():
-            response = resp
-            break
-
-    st.markdown(f"""
-    <div class="chat-bubble">
-        <span style="color:#EF4444; font-weight:600; font-family:'Space Grotesk',sans-serif;">HeartAI</span> &nbsp;·&nbsp; 
-        <span style="color:#475569; font-size:12px; font-family:'JetBrains Mono',monospace;">{datetime.now().strftime('%H:%M')}</span><br><br>
-        {response}
+if page == "👥 Project Team":
+    st.write("")
+    st.markdown("""
+    <div class="team-hero">
+        <div class="team-hero-title">👥 Project Team &amp; Acknowledgement</div>
+        <div class="team-hero-sub">
+            HeartAI — Cardiac Intelligence Platform is developed as an academic project,
+            combining machine learning, data visualization, and generative AI to support
+            cardiac risk screening and health awareness.
+        </div>
+        <div class="univ-badge">🎓 CSJM University, Kanpur</div>
     </div>
     """, unsafe_allow_html=True)
 
-# =========================================================
-# MOTIVATION
-# =========================================================
+    st.markdown("""
+    <div class="card">
+        <div class="card-title">🛠️ Developed By</div>
+        <div class="card-sub">Team members who designed, built, and tested the HeartAI platform.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-st.write("")
-quotes = [
-    ("Your heart beats 3.5 billion times in a lifetime.", "Treat it accordingly."),
-    ("Prevention is the most powerful medicine.", "Start today, not tomorrow."),
-    ("Every healthy meal is a gift to your future self.", "Choose wisely."),
-    ("A 30-minute walk today keeps the cardiologist away.", "Move your body."),
-    ("Stress is a silent cardiac risk factor.", "Breathe, reset, recover."),
-]
+    t1, t2 = st.columns(2)
+    team_members = [
+        ("Prem Sharma", "320", "Development &amp; Design"),
+        ("Krishna Kumar Verma", "290", "Development &amp; Testing"),
+    ]
+    for col, (name, roll, role) in zip((t1, t2), team_members):
+        initials = "".join([w[0] for w in name.split()[:2]]).upper()
+        with col:
+            st.markdown(f"""
+            <div class="team-card">
+                <div class="team-avatar">{initials}</div>
+                <div class="team-name">{name}</div>
+                <div class="team-roll">Roll No. {roll}</div>
+                <div class="team-role">{role}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-quote, sub = random.choice(quotes)
-st.markdown(f"""
-<div style="background: linear-gradient(135deg, #0D1421, #1a0a0a); border:1px solid rgba(239,68,68,0.2); border-radius:20px; padding:32px; text-align:center;">
-    <div style="font-size:11px; color:#EF4444; font-weight:700; letter-spacing:2px; text-transform:uppercase; font-family:'Space Grotesk',sans-serif; margin-bottom:12px;">✨ DAILY INSIGHT</div>
-    <div style="font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:600; color:white; margin-bottom:8px;">"{quote}"</div>
-    <div style="color:#475569; font-size:15px;">{sub}</div>
-</div>
-""", unsafe_allow_html=True)
+    st.write("")
+    st.markdown("""
+    <div class="card">
+        <div class="card-title">🧭 Under the Guidance Of</div>
+        <div class="card-sub">This project was completed under academic mentorship and supervision.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="guide-card">
+        <div class="guide-avatar">PT</div>
+        <div>
+            <div class="guide-label">Project Guide</div>
+            <div class="guide-name">Pragya Tripathi Ma'am</div>
+            <div class="guide-role">Faculty Guide, CSJM University, Kanpur</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.write("")
+    st.markdown("""
+    <div class="disclaimer">
+        <strong>Note:</strong> HeartAI is an academic project built for learning purposes.
+        It is not a certified medical device, and its predictions should not be used
+        as a substitute for professional medical advice.
+    </div>
+    """, unsafe_allow_html=True)
 
 # =========================================================
 # FOOTER
 # =========================================================
-
-st.write("")
 st.markdown("""
-<div class="footer-bar">
-    <div style="font-size:11px; color:#475569; font-weight:700; letter-spacing:2px; text-transform:uppercase; font-family:'Space Grotesk',sans-serif; margin-bottom:16px;">TECHNOLOGIES</div>
-    <div style="margin-bottom:24px;">
-        <span class="tech-badge">Python</span>
-        <span class="tech-badge">Streamlit</span>
-        <span class="tech-badge">Scikit-Learn</span>
-        <span class="tech-badge">XGBoost</span>
-        <span class="tech-badge">Plotly</span>
-        <span class="tech-badge">NumPy</span>
-        <span class="tech-badge">Pandas</span>
-        <span class="tech-badge">Joblib</span>
+<div class="footer">
+    <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px;">
+        HEARTAI • CARDIAC INTELLIGENCE PLATFORM
     </div>
-    <div style="color:#334155; font-size:13px; margin-bottom:8px;">
-        ⚠️ HeartAI is an assistive tool only. Not a substitute for professional medical advice, diagnosis, or treatment.
-    </div>
-    <div style="color:#1E293B; font-size:12px;">
-        Built with ❤️ by Prem Sharma &nbsp;·&nbsp; HeartAI v2.0 &nbsp;·&nbsp; © 2025
+    <strong>Python</strong> · Streamlit · Scikit-learn · Plotly · Gemini
+    <div style="margin-top:12px;font-size:11px;">
+        Academic project • AI output is informational and not a medical diagnosis.
     </div>
 </div>
 """, unsafe_allow_html=True)
